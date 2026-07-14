@@ -1,12 +1,14 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { downloadCSV } from '@/utils/csv'
-import { addArea, deleteArea, addIndicator, deleteIndicator, addAssignment, deleteAssignment, bulkAddMabbeppaAreas } from './actions'
-import { Trash2, Download, Upload } from 'lucide-react'
+import { addArea, deleteArea, updateArea, addIndicator, deleteIndicator, updateIndicator, addAssignment, deleteAssignment, bulkAddMabbeppaAreas } from './actions'
+import { Trash2, Download, Upload, Search, X, Check, ChevronDown, Edit2 } from 'lucide-react'
 
 export function MabbeppaManager({ areas, indicators, assignments, logs, students }: any) {
   const [activeTab, setActiveTab] = useState('areas')
+  const [editingArea, setEditingArea] = useState<string | null>(null)
+  const [editingIndicator, setEditingIndicator] = useState<string | null>(null)
   
   // Bulk Import State
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
@@ -14,8 +16,13 @@ export function MabbeppaManager({ areas, indicators, assignments, logs, students
   const [importError, setImportError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Assignments Checkbox State
+  // Assignments State
+  const [selectedArea, setSelectedArea] = useState('')
   const [selectedCleaners, setSelectedCleaners] = useState<string[]>([])
+  const [selectedReporter, setSelectedReporter] = useState('')
+
+  const areaOptions = areas.map((a: any) => ({ value: a.id, label: a.name }))
+  const studentOptions = students.map((s: any) => ({ value: s.id, label: `${s.full_name} (${s.nis})` }))
 
   const handleExportLogs = () => {
     const exportData = logs.map((log: any) => ({
@@ -130,11 +137,25 @@ export function MabbeppaManager({ areas, indicators, assignments, logs, students
             <ul className="divide-y divide-slate-100 border rounded-lg">
               {areas.map((a: any) => (
                 <li key={a.id} className="flex justify-between items-center p-4 hover:bg-slate-50">
-                  <span className="font-medium">{a.name}</span>
-                  <form action={deleteArea}>
-                    <input type="hidden" name="id" value={a.id} />
-                    <button type="submit" className="text-red-500 hover:bg-red-50 p-2 rounded"><Trash2 className="w-4 h-4" /></button>
-                  </form>
+                  {editingArea === a.id ? (
+                    <form action={(formData) => { updateArea(formData).then(() => setEditingArea(null)) }} className="flex w-full gap-2 items-center">
+                      <input type="hidden" name="id" value={a.id} />
+                      <input type="text" name="name" defaultValue={a.name} required className="flex-1 px-3 py-1.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" autoFocus />
+                      <button type="submit" className="p-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200"><Check className="w-4 h-4" /></button>
+                      <button type="button" onClick={() => setEditingArea(null)} className="p-1.5 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200"><X className="w-4 h-4" /></button>
+                    </form>
+                  ) : (
+                    <>
+                      <span className="font-medium">{a.name}</span>
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => setEditingArea(a.id)} className="text-blue-500 hover:bg-blue-50 p-2 rounded"><Edit2 className="w-4 h-4" /></button>
+                        <form action={deleteArea}>
+                          <input type="hidden" name="id" value={a.id} />
+                          <button type="submit" className="text-red-500 hover:bg-red-50 p-2 rounded"><Trash2 className="w-4 h-4" /></button>
+                        </form>
+                      </div>
+                    </>
+                  )}
                 </li>
               ))}
             </ul>
@@ -150,11 +171,25 @@ export function MabbeppaManager({ areas, indicators, assignments, logs, students
             <ul className="divide-y divide-slate-100 border rounded-lg">
               {indicators.map((i: any) => (
                 <li key={i.id} className="flex justify-between items-center p-4 hover:bg-slate-50">
-                  <span className="font-medium">{i.label}</span>
-                  <form action={deleteIndicator}>
-                    <input type="hidden" name="id" value={i.id} />
-                    <button type="submit" className="text-red-500 hover:bg-red-50 p-2 rounded"><Trash2 className="w-4 h-4" /></button>
-                  </form>
+                  {editingIndicator === i.id ? (
+                    <form action={(formData) => { updateIndicator(formData).then(() => setEditingIndicator(null)) }} className="flex w-full gap-2 items-center">
+                      <input type="hidden" name="id" value={i.id} />
+                      <input type="text" name="label" defaultValue={i.label} required className="flex-1 px-3 py-1.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" autoFocus />
+                      <button type="submit" className="p-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200"><Check className="w-4 h-4" /></button>
+                      <button type="button" onClick={() => setEditingIndicator(null)} className="p-1.5 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200"><X className="w-4 h-4" /></button>
+                    </form>
+                  ) : (
+                    <>
+                      <span className="font-medium">{i.label}</span>
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => setEditingIndicator(i.id)} className="text-blue-500 hover:bg-blue-50 p-2 rounded"><Edit2 className="w-4 h-4" /></button>
+                        <form action={deleteIndicator}>
+                          <input type="hidden" name="id" value={i.id} />
+                          <button type="submit" className="text-red-500 hover:bg-red-50 p-2 rounded"><Trash2 className="w-4 h-4" /></button>
+                        </form>
+                      </div>
+                    </>
+                  )}
                 </li>
               ))}
             </ul>
@@ -164,45 +199,52 @@ export function MabbeppaManager({ areas, indicators, assignments, logs, students
         {activeTab === 'assignments' && (
           <div className="space-y-6">
             <form action={(formData) => {
+              if (!selectedArea || selectedCleaners.length === 0 || !selectedReporter) {
+                 alert("Please fill all required fields")
+                 return
+              }
               // Ensure all selected cleaners are included in formData
               selectedCleaners.forEach(id => formData.append('student_id', id))
-              addAssignment(formData).then(() => setSelectedCleaners([]))
-            }} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
-              <div className="space-y-1">
+              addAssignment(formData).then(() => {
+                setSelectedArea('')
+                setSelectedCleaners([])
+                setSelectedReporter('')
+              })
+            }} className="flex flex-col gap-4 max-w-xl">
+              <div className="space-y-1 w-full">
                 <label className="text-xs font-semibold text-slate-500 uppercase">Area</label>
-                <select name="area_id" required className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
-                  <option value="">Select Area...</option>
-                  {areas.map((a: any) => <option key={a.id} value={a.id}>{a.name}</option>)}
-                </select>
+                <SearchableSelect 
+                  name="area_id"
+                  options={areaOptions} 
+                  value={selectedArea} 
+                  onChange={setSelectedArea} 
+                  placeholder="Select Area..." 
+                />
               </div>
               
-              <div className="space-y-1">
+              <div className="space-y-1 w-full">
                 <label className="text-xs font-semibold text-slate-500 uppercase">Cleaners</label>
-                <div className="w-full border rounded-lg overflow-y-auto max-h-[150px] bg-white divide-y divide-slate-100">
-                  {students.map((s: any) => (
-                    <label key={s.id} className="flex items-center px-4 py-2 hover:bg-slate-50 cursor-pointer">
-                      <input 
-                        type="checkbox" 
-                        className="mr-3 w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
-                        checked={selectedCleaners.includes(s.id)}
-                        onChange={() => toggleCleaner(s.id)}
-                      />
-                      <span className="text-sm font-medium text-slate-700">{s.full_name} <span className="text-slate-400 font-normal">({s.nis})</span></span>
-                    </label>
-                  ))}
-                </div>
+                <SearchableMultiSelect 
+                  options={studentOptions} 
+                  values={selectedCleaners} 
+                  onChange={setSelectedCleaners} 
+                  placeholder="Select Cleaners..." 
+                />
                 {selectedCleaners.length === 0 && <p className="text-xs text-red-500 mt-1">Select at least one cleaner.</p>}
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1 w-full">
                 <label className="text-xs font-semibold text-slate-500 uppercase">Reporter</label>
-                <select name="reporter_id" required className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
-                  <option value="">Select Reporter...</option>
-                  {students.map((s: any) => <option key={s.id} value={s.id}>{s.full_name} ({s.nis})</option>)}
-                </select>
+                <SearchableSelect 
+                  name="reporter_id"
+                  options={studentOptions} 
+                  value={selectedReporter} 
+                  onChange={setSelectedReporter} 
+                  placeholder="Select Reporter..." 
+                />
               </div>
-              <div className="space-y-1 self-end pt-4 md:pt-0 flex items-end">
-                <button type="submit" disabled={selectedCleaners.length === 0} className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium h-[42px] disabled:opacity-50">Assign</button>
+              <div className="pt-2 w-full">
+                <button type="submit" disabled={selectedCleaners.length === 0 || !selectedArea || !selectedReporter} className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium h-[42px] disabled:opacity-50">Assign</button>
               </div>
             </form>
             <div className="overflow-x-auto border rounded-lg">
@@ -316,6 +358,170 @@ export function MabbeppaManager({ areas, indicators, assignments, logs, students
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function SearchableSelect({ options, value, onChange, placeholder, name }: any) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const wrapperRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const filteredOptions = options.filter((o: any) => o.label.toLowerCase().includes(search.toLowerCase()))
+  const selectedOption = options.find((o: any) => o.value === value)
+
+  return (
+    <div className="relative w-full" ref={wrapperRef}>
+      <input type="hidden" name={name} value={value} />
+      <div 
+        className="w-full px-4 py-2 border rounded-lg bg-white flex justify-between items-center cursor-pointer min-h-[42px] hover:border-blue-400 transition-colors"
+        onClick={() => { setIsOpen(!isOpen); if (!isOpen) setSearch('') }}
+      >
+        <span className={`text-sm ${selectedOption ? 'text-slate-900' : 'text-slate-500'}`}>
+          {selectedOption ? selectedOption.label : placeholder}
+        </span>
+        <ChevronDown className="w-4 h-4 text-slate-400" />
+      </div>
+      
+      {isOpen && (
+        <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-xl">
+          <div className="p-2 border-b flex items-center bg-slate-50 rounded-t-lg">
+            <Search className="w-4 h-4 text-slate-400 mr-2" />
+            <input 
+              type="text" 
+              className="w-full outline-none text-sm bg-transparent" 
+              placeholder="Search..." 
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <div className="max-h-60 overflow-y-auto">
+            {filteredOptions.length === 0 ? (
+              <div className="p-3 text-sm text-slate-500 text-center">No results found</div>
+            ) : (
+              filteredOptions.map((o: any) => (
+                <div 
+                  key={o.value} 
+                  className={`px-4 py-2 text-sm cursor-pointer hover:bg-slate-50 flex justify-between items-center ${value === o.value ? 'bg-blue-50 text-blue-700 font-medium' : 'text-slate-700'}`}
+                  onClick={() => {
+                    onChange(o.value)
+                    setIsOpen(false)
+                    setSearch('')
+                  }}
+                >
+                  {o.label}
+                  {value === o.value && <Check className="w-4 h-4 text-blue-600" />}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function SearchableMultiSelect({ options, values, onChange, placeholder }: any) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const wrapperRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const filteredOptions = options.filter((o: any) => o.label.toLowerCase().includes(search.toLowerCase()))
+  
+  const toggleValue = (val: string) => {
+    if (values.includes(val)) {
+      onChange(values.filter((v: string) => v !== val))
+    } else {
+      onChange([...values, val])
+    }
+  }
+
+  const removeValue = (e: any, val: string) => {
+    e.stopPropagation()
+    onChange(values.filter((v: string) => v !== val))
+  }
+
+  return (
+    <div className="relative w-full" ref={wrapperRef}>
+      <div 
+        className="w-full px-2 py-1.5 border rounded-lg bg-white flex flex-wrap gap-1.5 items-center cursor-text min-h-[42px] hover:border-blue-400 transition-colors"
+        onClick={() => { setIsOpen(true) }}
+      >
+        {values.length === 0 && search === '' && (
+          <span className="text-sm text-slate-500 px-2 absolute pointer-events-none">{placeholder}</span>
+        )}
+        {values.map((v: string) => {
+          const opt = options.find((o: any) => o.value === v)
+          if (!opt) return null
+          return (
+            <span key={v} className="bg-blue-50 border border-blue-100 text-blue-700 text-xs px-2 py-1 rounded flex items-center font-medium">
+              {opt.label}
+              <button type="button" onClick={(e) => removeValue(e, v)} className="ml-1.5 hover:text-blue-900 focus:outline-none">
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          )
+        })}
+        <input 
+          type="text" 
+          className="flex-1 min-w-[60px] outline-none text-sm px-1 bg-transparent z-10 relative" 
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value)
+            if (!isOpen) setIsOpen(true)
+          }}
+          onFocus={() => setIsOpen(true)}
+        />
+        <div className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer" onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen) }}>
+           <ChevronDown className="w-4 h-4 text-slate-400" />
+        </div>
+      </div>
+      
+      {isOpen && (
+        <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-xl">
+          <div className="max-h-60 overflow-y-auto">
+            {filteredOptions.length === 0 ? (
+              <div className="p-3 text-sm text-slate-500 text-center">No results found</div>
+            ) : (
+              filteredOptions.map((o: any) => (
+                <label 
+                  key={o.value} 
+                  className={`px-4 py-2 text-sm cursor-pointer hover:bg-slate-50 flex items-center ${values.includes(o.value) ? 'bg-blue-50 text-blue-700 font-medium' : 'text-slate-700'}`}
+                >
+                  <input 
+                    type="checkbox" 
+                    className="mr-3 w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer"
+                    checked={values.includes(o.value)}
+                    onChange={() => toggleValue(o.value)}
+                  />
+                  {o.label}
+                </label>
+              ))
+            )}
           </div>
         </div>
       )}

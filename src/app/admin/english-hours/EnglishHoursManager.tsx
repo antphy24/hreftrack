@@ -2,11 +2,12 @@
 
 import { useState } from 'react'
 import { downloadCSV } from '@/utils/csv'
-import { addStatement, deleteStatement, toggleStatementActive } from './actions'
-import { Trash2, Download, Power, PowerOff } from 'lucide-react'
+import { addStatement, deleteStatement, toggleStatementActive, updateStatement } from './actions'
+import { Trash2, Download, Power, PowerOff, Edit2 } from 'lucide-react'
 
 export function EnglishHoursManager({ statements, selfLogs, peerReports }: any) {
   const [activeTab, setActiveTab] = useState('statements')
+  const [editingStatement, setEditingStatement] = useState<string | null>(null)
 
   const handleExportSelfLogs = () => {
     const exportData = selfLogs.map((log: any) => ({
@@ -65,7 +66,20 @@ export function EnglishHoursManager({ statements, selfLogs, peerReports }: any) 
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-slate-200">
-                  {statements.map((s: any) => (
+                  {statements.map((s: any) => editingStatement === s.id ? (
+                    <tr key={s.id} className="bg-slate-50">
+                      <td colSpan={3} className="px-4 py-3">
+                        <form action={(formData) => { updateStatement(formData).then(() => setEditingStatement(null)) }} className="flex gap-4 items-center w-full">
+                          <input type="hidden" name="id" value={s.id} />
+                          <input type="text" name="statement" defaultValue={s.statement} required className="flex-1 px-3 py-1.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" autoFocus />
+                          <div className="flex gap-2">
+                            <button type="submit" className="px-3 py-1.5 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700">Save</button>
+                            <button type="button" onClick={() => setEditingStatement(null)} className="px-3 py-1.5 bg-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-300">Cancel</button>
+                          </div>
+                        </form>
+                      </td>
+                    </tr>
+                  ) : (
                     <tr key={s.id}>
                       <td className="px-4 py-3 text-sm">{s.statement}</td>
                       <td className="px-4 py-3 text-sm">
@@ -74,6 +88,9 @@ export function EnglishHoursManager({ statements, selfLogs, peerReports }: any) 
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right flex justify-end space-x-2">
+                        <button onClick={() => setEditingStatement(s.id)} className="text-blue-500 hover:bg-blue-50 p-2 rounded" title="Edit">
+                          <Edit2 className="w-4 h-4" />
+                        </button>
                         <button 
                           onClick={() => toggleStatementActive(s.id, s.is_active)}
                           className={`p-2 rounded ${s.is_active ? 'text-amber-500 hover:bg-amber-50' : 'text-purple-500 hover:bg-purple-50'}`}
@@ -83,7 +100,7 @@ export function EnglishHoursManager({ statements, selfLogs, peerReports }: any) 
                         </button>
                         <form action={deleteStatement}>
                           <input type="hidden" name="id" value={s.id} />
-                          <button type="submit" className="text-red-500 hover:text-red-700 p-2 rounded hover:bg-red-50"><Trash2 className="w-4 h-4" /></button>
+                          <button type="submit" className="text-red-500 hover:text-red-700 p-2 rounded hover:bg-red-50" title="Delete"><Trash2 className="w-4 h-4" /></button>
                         </form>
                       </td>
                     </tr>

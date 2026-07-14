@@ -2,11 +2,14 @@
 
 import { useState, useRef } from 'react'
 import { downloadCSV } from '@/utils/csv'
-import { addCategory, deleteCategory, addItem, deleteItem, toggleItemActive, bulkAddAdabItems } from './actions'
-import { Trash2, Download, Power, PowerOff, Upload } from 'lucide-react'
+import { addCategory, deleteCategory, updateCategory, addItem, deleteItem, updateItem, toggleItemActive, bulkAddAdabItems } from './actions'
+import { Trash2, Download, Power, PowerOff, Upload, Edit2, X, Check } from 'lucide-react'
 
 export function ActionPlanManager({ categories, items, logs }: any) {
   const [activeTab, setActiveTab] = useState('categories')
+  const [editingCategory, setEditingCategory] = useState<string | null>(null)
+  const [editingItem, setEditingItem] = useState<string | null>(null)
+
   
   // Bulk Import State
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
@@ -118,11 +121,25 @@ export function ActionPlanManager({ categories, items, logs }: any) {
             <ul className="divide-y divide-slate-100 border rounded-lg">
               {categories.map((c: any) => (
                 <li key={c.id} className="flex justify-between items-center p-4 hover:bg-slate-50">
-                  <span className="font-medium">{c.name}</span>
-                  <form action={deleteCategory}>
-                    <input type="hidden" name="id" value={c.id} />
-                    <button type="submit" className="text-red-500 hover:bg-red-50 p-2 rounded"><Trash2 className="w-4 h-4" /></button>
-                  </form>
+                  {editingCategory === c.id ? (
+                    <form action={(formData) => { updateCategory(formData).then(() => setEditingCategory(null)) }} className="flex w-full gap-2 items-center">
+                      <input type="hidden" name="id" value={c.id} />
+                      <input type="text" name="name" defaultValue={c.name} required className="flex-1 px-3 py-1.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" autoFocus />
+                      <button type="submit" className="p-1.5 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200"><Check className="w-4 h-4" /></button>
+                      <button type="button" onClick={() => setEditingCategory(null)} className="p-1.5 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200"><X className="w-4 h-4" /></button>
+                    </form>
+                  ) : (
+                    <>
+                      <span className="font-medium">{c.name}</span>
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => setEditingCategory(c.id)} className="text-blue-500 hover:bg-blue-50 p-2 rounded"><Edit2 className="w-4 h-4" /></button>
+                        <form action={deleteCategory}>
+                          <input type="hidden" name="id" value={c.id} />
+                          <button type="submit" className="text-red-500 hover:bg-red-50 p-2 rounded"><Trash2 className="w-4 h-4" /></button>
+                        </form>
+                      </div>
+                    </>
+                  )}
                 </li>
               ))}
             </ul>
@@ -150,7 +167,23 @@ export function ActionPlanManager({ categories, items, logs }: any) {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-slate-200">
-                  {items.map((i: any) => (
+                  {items.map((i: any) => editingItem === i.id ? (
+                    <tr key={i.id} className="bg-slate-50">
+                      <td colSpan={4} className="px-4 py-3">
+                        <form action={(formData) => { updateItem(formData).then(() => setEditingItem(null)) }} className="flex gap-4 items-center w-full">
+                          <input type="hidden" name="id" value={i.id} />
+                          <select name="category_id" defaultValue={i.category_id} required className="w-1/3 px-3 py-1.5 border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                            {categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                          </select>
+                          <input type="text" name="description" defaultValue={i.description} required className="flex-1 px-3 py-1.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" autoFocus />
+                          <div className="flex gap-2">
+                            <button type="submit" className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700">Save</button>
+                            <button type="button" onClick={() => setEditingItem(null)} className="px-3 py-1.5 bg-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-300">Cancel</button>
+                          </div>
+                        </form>
+                      </td>
+                    </tr>
+                  ) : (
                     <tr key={i.id}>
                       <td className="px-4 py-3 text-sm">{i.adab_categories?.name}</td>
                       <td className="px-4 py-3 text-sm">{i.description}</td>
@@ -160,6 +193,9 @@ export function ActionPlanManager({ categories, items, logs }: any) {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right flex justify-end space-x-2">
+                        <button onClick={() => setEditingItem(i.id)} className="text-blue-500 hover:bg-blue-50 p-2 rounded" title="Edit">
+                          <Edit2 className="w-4 h-4" />
+                        </button>
                         <button 
                           onClick={() => toggleItemActive(i.id, i.is_active)}
                           className={`p-2 rounded ${i.is_active ? 'text-amber-500 hover:bg-amber-50' : 'text-emerald-500 hover:bg-emerald-50'}`}
@@ -169,7 +205,7 @@ export function ActionPlanManager({ categories, items, logs }: any) {
                         </button>
                         <form action={deleteItem}>
                           <input type="hidden" name="id" value={i.id} />
-                          <button type="submit" className="text-red-500 hover:text-red-700 p-2 rounded hover:bg-red-50"><Trash2 className="w-4 h-4" /></button>
+                          <button type="submit" className="text-red-500 hover:text-red-700 p-2 rounded hover:bg-red-50" title="Delete"><Trash2 className="w-4 h-4" /></button>
                         </form>
                       </td>
                     </tr>

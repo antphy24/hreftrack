@@ -23,3 +23,11 @@ export async function toggleStatementActive(id: string, currentStatus: boolean) 
   await supabase.from('english_statements').update({ is_active: !currentStatus }).eq('id', id)
   revalidatePath('/admin/english-hours')
 }
+
+export async function updateStatement(formData: FormData) {
+  const supabase = createClient()
+  const id = formData.get('id') as string
+  const statement = formData.get('statement') as string
+  await supabase.from('english_statements').update({ statement }).eq('id', id)
+  revalidatePath('/admin/english-hours')
+}

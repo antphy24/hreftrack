@@ -16,6 +16,13 @@ export async function deleteCategory(formData: FormData) {
   await supabase.from('adab_categories').delete().eq('id', id)
   revalidatePath('/admin/action-plan')
 }
+export async function updateCategory(formData: FormData) {
+  const supabase = createClient()
+  const id = formData.get('id') as string
+  const name = formData.get('name') as string
+  await supabase.from('adab_categories').update({ name }).eq('id', id)
+  revalidatePath('/admin/action-plan')
+}
 
 // Items
 export async function addItem(formData: FormData) {
@@ -29,6 +36,14 @@ export async function deleteItem(formData: FormData) {
   const supabase = createClient()
   const id = formData.get('id') as string
   await supabase.from('adab_items').delete().eq('id', id)
+  revalidatePath('/admin/action-plan')
+}
+export async function updateItem(formData: FormData) {
+  const supabase = createClient()
+  const id = formData.get('id') as string
+  const category_id = formData.get('category_id') as string
+  const description = formData.get('description') as string
+  await supabase.from('adab_items').update({ category_id, description }).eq('id', id)
   revalidatePath('/admin/action-plan')
 }
 export async function toggleItemActive(id: string, currentStatus: boolean) {

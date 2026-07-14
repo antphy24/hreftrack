@@ -16,6 +16,13 @@ export async function deleteArea(formData: FormData) {
   await supabase.from('mabbeppa_areas').delete().eq('id', id)
   revalidatePath('/admin/mabbeppa')
 }
+export async function updateArea(formData: FormData) {
+  const supabase = createClient()
+  const id = formData.get('id') as string
+  const name = formData.get('name') as string
+  await supabase.from('mabbeppa_areas').update({ name }).eq('id', id)
+  revalidatePath('/admin/mabbeppa')
+}
 
 // Indicators
 export async function addIndicator(formData: FormData) {
@@ -28,6 +35,13 @@ export async function deleteIndicator(formData: FormData) {
   const supabase = createClient()
   const id = formData.get('id') as string
   await supabase.from('mabbeppa_indicators').delete().eq('id', id)
+  revalidatePath('/admin/mabbeppa')
+}
+export async function updateIndicator(formData: FormData) {
+  const supabase = createClient()
+  const id = formData.get('id') as string
+  const label = formData.get('label') as string
+  await supabase.from('mabbeppa_indicators').update({ label }).eq('id', id)
   revalidatePath('/admin/mabbeppa')
 }
 
