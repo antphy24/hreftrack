@@ -3,8 +3,10 @@
 import { useState } from 'react'
 import { submitSelfLog } from './actions'
 import { Check } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 
 export function EnglishHoursForm({ statements, loggedStatementIds }: any) {
+  const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
@@ -15,7 +17,8 @@ export function EnglishHoursForm({ statements, loggedStatementIds }: any) {
     setError(null)
     setSuccess(false)
     
-    const formData = new FormData(e.currentTarget)
+    const form = e.currentTarget
+    const formData = new FormData(form)
     
     try {
       const res = await submitSelfLog(formData)
@@ -23,10 +26,11 @@ export function EnglishHoursForm({ statements, loggedStatementIds }: any) {
         setError(res.error)
       } else {
         setSuccess(true)
-        e.currentTarget.reset()
+        form.reset()
+        router.refresh()
       }
-    } catch (err) {
-      setError('An unexpected error occurred.')
+    } catch (err: any) {
+      setError(`An unexpected client error occurred: ${err.message || 'Unknown error'}`)
     } finally {
       setIsLoading(false)
     }

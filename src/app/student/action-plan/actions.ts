@@ -2,6 +2,7 @@
 
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { getStartOfDayMakassar } from '@/lib/utils'
 
 export async function submitActionPlan(formData: FormData) {
   const supabase = createClient()
@@ -17,14 +18,13 @@ export async function submitActionPlan(formData: FormData) {
   }
 
   // Check which items were already logged today to prevent duplicates
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  const startOfDay = getStartOfDayMakassar()
   
   const { data: existingLogs } = await supabase
     .from('adab_logs')
     .select('item_id')
     .eq('student_id', user.id)
-    .gte('created_at', today.toISOString())
+    .gte('created_at', startOfDay)
 
   const existingItemIds = existingLogs?.map(log => log.item_id) || []
 
@@ -41,6 +41,8 @@ export async function submitActionPlan(formData: FormData) {
     if (error) {
       return { error: error.message }
     }
+  } else {
+    return { error: 'You have already logged all these items for today.' }
   }
 
   revalidatePath('/student/action-plan')

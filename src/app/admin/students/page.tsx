@@ -1,19 +1,27 @@
 import { Suspense } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/utils/supabase/server'
 import { Plus, Trash2 } from 'lucide-react'
 import { deleteStudent } from './actions'
 import { AddStudentForm } from './AddStudentForm'
 import { BulkAddStudentsForm } from './BulkAddStudentsForm'
 import { ResetPasswordForm } from './ResetPasswordForm'
+import { DeleteFormButton } from '@/components/DeleteFormButton'
 
-async function StudentsList() {
+async function StudentsList({ currentPage }: { currentPage: number }) {
   const supabase = createClient()
+  const ITEMS_PER_PAGE = 10
+  const from = (currentPage - 1) * ITEMS_PER_PAGE
+  const to = from + ITEMS_PER_PAGE - 1
   
-  const { data: students } = await supabase
+  const { data: students, count } = await supabase
     .from('profiles')
-    .select('*')
+    .select('*', { count: 'exact' })
     .eq('role', 'student')
     .order('created_at', { ascending: false })
+    .range(from, to)
+    
+  const totalPages = Math.ceil((count || 0) / ITEMS_PER_PAGE)
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
@@ -33,7 +41,7 @@ async function StudentsList() {
               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{student.full_name}</td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{student.nis}</td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                <span className="bg-slate-100 px-2 py-1 rounded text-xs font-mono">{student.nis}@student.local</span>
+                <span className="bg-slate-100 px-2 py-1 rounded text-xs font-mono">{student.nis}@athirah.bone</span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
                 {new Date(student.created_at).toLocaleDateString()}
@@ -43,9 +51,7 @@ async function StudentsList() {
                   <ResetPasswordForm studentId={student.id} studentName={student.full_name} />
                   <form action={deleteStudent}>
                     <input type="hidden" name="id" value={student.id} />
-                    <button type="submit" title="Delete Student" className="text-red-500 hover:text-red-700 p-2 rounded-lg hover:bg-red-50 transition-colors">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <DeleteFormButton title="Delete Student" description={`Are you sure you want to delete ${student.full_name}? This action cannot be undone.`} />
                   </form>
                 </div>
               </td>
@@ -60,6 +66,25 @@ async function StudentsList() {
           )}
         </tbody>
       </table>
+      {totalPages > 1 && (
+        <div className="bg-slate-50 px-6 py-4 border-t border-slate-200 flex items-center justify-between">
+          <div className="text-sm text-slate-500">
+            Showing <span className="font-medium">{from + 1}</span> to <span className="font-medium">{Math.min(to + 1, count || 0)}</span> of <span className="font-medium">{count}</span> students
+          </div>
+          <div className="flex space-x-2">
+            {currentPage > 1 ? (
+              <Link href={`/admin/students?page=${currentPage - 1}`} className="px-3 py-1 bg-white border border-slate-300 rounded text-sm text-slate-600 hover:bg-slate-50">Previous</Link>
+            ) : (
+              <button disabled className="px-3 py-1 bg-slate-100 border border-slate-200 rounded text-sm text-slate-400 cursor-not-allowed">Previous</button>
+            )}
+            {currentPage < totalPages ? (
+              <Link href={`/admin/students?page=${currentPage + 1}`} className="px-3 py-1 bg-white border border-slate-300 rounded text-sm text-slate-600 hover:bg-slate-50">Next</Link>
+            ) : (
+              <button disabled className="px-3 py-1 bg-slate-100 border border-slate-200 rounded text-sm text-slate-400 cursor-not-allowed">Next</button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -83,7 +108,9 @@ function StudentsSkeleton() {
   )
 }
 
-export default function StudentsPage() {
+export default function StudentsPage({ searchParams }: { searchParams: { page?: string } }) {
+  const currentPage = parseInt(searchParams.page || '1')
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
@@ -97,8 +124,8 @@ export default function StudentsPage() {
         </div>
       </div>
 
-      <Suspense fallback={<StudentsSkeleton />}>
-        <StudentsList />
+      <Suspense fallback={<StudentsSkeleton />} key={currentPage}>
+        <StudentsList currentPage={currentPage} />
       </Suspense>
     </div>
   )

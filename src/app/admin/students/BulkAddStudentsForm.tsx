@@ -3,6 +3,8 @@
 import { useState, useRef } from 'react'
 import { Upload } from 'lucide-react'
 import { bulkCreateStudents } from './actions'
+import { Modal } from '@/components/Modal'
+import { parseCSV } from '@/utils/csv'
 
 export function BulkAddStudentsForm() {
   const [isOpen, setIsOpen] = useState(false)
@@ -24,22 +26,19 @@ export function BulkAddStudentsForm() {
     reader.onload = async (event) => {
       try {
         const text = event.target?.result as string
-        const lines = text.split('\n').map(line => line.trim()).filter(line => line)
+        const lines = parseCSV(text)
         
         if (lines.length < 2) {
           throw new Error('CSV file is empty or missing data rows.')
         }
 
-        // Assuming basic CSV format without complex quoting
-        const students = lines.slice(1).map((line, index) => {
-          const parts = line.split(',').map(p => p.trim())
-          if (parts.length < 3) {
-            throw new Error(`Row ${index + 2} is missing required columns (Name, NIS, Password).`)
+        const students = lines.slice(1).map((parts, index) => {
+          if (parts.length < 2) {
+            throw new Error(`Row ${index + 2} is missing required columns (Name, NIS).`)
           }
           return {
             fullName: parts[0],
-            nis: parts[1],
-            password: parts[2]
+            nis: parts[1]
           }
         })
 
@@ -62,7 +61,7 @@ export function BulkAddStudentsForm() {
   }
 
   const downloadTemplate = () => {
-    const template = 'Full Name,NIS,Password\nJohn Doe,12345,password123\nJane Smith,67890,password456'
+    const template = 'Full Name,NIS\nJohn Doe,12345\nJane Smith,67890'
     const blob = new Blob([template], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -86,19 +85,10 @@ export function BulkAddStudentsForm() {
         Import Students
       </button>
 
-      {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <h3 className="text-lg font-bold text-slate-800">Bulk Add Students</h3>
-              <button onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-slate-600">
-                ✕
-              </button>
-            </div>
-            
-            <div className="p-6 space-y-4">
+      <Modal isOpen={isOpen} onClose={() => setIsOpen(false)} title="Bulk Add Students" maxWidth="max-w-lg">
+        <div className="space-y-4">
               <p className="text-sm text-slate-600">
-                Upload a CSV file containing student information. The file must have a header row and three columns exactly in this order: <strong>Full Name, NIS, Password</strong>.
+                Upload a CSV file containing student information. The file must have a header row and two columns exactly in this order: <strong>Full Name, NIS</strong>.
               </p>
               
               <button 
@@ -136,44 +126,44 @@ export function BulkAddStudentsForm() {
                 </div>
               )}
 
-              <div className="mt-4">
+              <div className="mt-6">
                 <input 
                   type="file" 
-                  accept=".csv"
+                  accept=".csv" 
                   ref={fileInputRef}
                   onChange={handleFileUpload}
-                  className="hidden"
+                  className="hidden" 
                   id="csv-upload"
                   disabled={isLoading}
                 />
                 <label 
-                  htmlFor="csv-upload"
-                  className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-xl transition-colors
-                    ${isLoading ? 'bg-slate-50 border-slate-200 cursor-wait' : 'border-slate-300 hover:bg-slate-50 hover:border-blue-400 cursor-pointer'}
-                  `}
+                  htmlFor="csv-upload" 
+                  className={`flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-2xl transition-all ${
+                    isLoading 
+                      ? 'bg-blue-50/50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800 cursor-wait' 
+                      : 'border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:border-blue-400 dark:hover:border-blue-500 cursor-pointer shadow-sm'
+                  }`}
                 >
-                  <div className="flex flex-col items-center justify-center pt-5 pb-6 text-slate-500">
-                    <Upload className="w-8 h-8 mb-3 text-slate-400" />
-                    <p className="mb-2 text-sm font-semibold">
+                  <div className="flex flex-col items-center justify-center pt-5 pb-6 text-slate-500 dark:text-slate-400">
+                    <Upload className="w-10 h-10 mb-4 text-slate-400 dark:text-slate-500" />
+                    <p className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
                       {isLoading ? 'Processing...' : 'Click to upload CSV'}
                     </p>
                   </div>
                 </label>
               </div>
 
-              <div className="pt-4 flex justify-end">
+              <div className="pt-6 flex justify-end border-t border-slate-100 dark:border-slate-800/50 mt-6">
                 <button 
                   type="button" 
                   onClick={() => setIsOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                  className="px-6 py-3 text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 dark:text-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-slate-500"
                 >
                   Close
                 </button>
               </div>
-            </div>
-          </div>
         </div>
-      )}
+      </Modal>
     </>
   )
 }

@@ -54,28 +54,31 @@ export async function middleware(request: NextRequest) {
     }
   )
 
+  // SECURITY FIX: Use getUser() instead of getSession() to validate the JWT
+  // server-side. getSession() only reads from cookies and can be forged.
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
-  
-  const user = session?.user
+    data: { user },
+  } = await supabase.auth.getUser()
 
   const pathname = request.nextUrl.pathname
 
-  async function getUserRole() {
-    let role = request.cookies.get('user-role')?.value
-    if (!role) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user?.id)
-        .single()
-      role = profile?.role
-      if (role) {
-        supabaseResponse.cookies.set('user-role', role, { path: '/' })
-      }
+  // SECURITY FIX: Always fetch role from the database. Never trust client cookies
+  // for authorization decisions — they can be tampered with.
+  async function getUserRoleAndStatus() {
+    if (!user) {
+      return { role: null, needsPasswordChange: false }
     }
-    return role
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role, needs_password_change')
+      .eq('id', user.id)
+      .single()
+
+    return {
+      role: profile?.role ?? null,
+      needsPasswordChange: profile?.needs_password_change === true,
+    }
   }
 
   // Protect /admin routes
@@ -83,12 +86,15 @@ export async function middleware(request: NextRequest) {
     if (!user) {
       return NextResponse.redirect(new URL('/login', request.url))
     }
-    const role = await getUserRole()
-    if (role === 'student') {
-      return NextResponse.redirect(new URL('/student/dashboard', request.url))
+    const { role } = await getUserRoleAndStatus()
+    // SECURITY FIX: Positive check — only allow confirmed admins.
+    // Previously only blocked role === 'student', allowing undefined/null roles through.
+    if (role !== 'admin') {
+      if (role === 'student') {
+        return NextResponse.redirect(new URL('/student/dashboard', request.url))
+      }
+      return NextResponse.redirect(new URL('/login', request.url))
     }
-    // If role is missing but user exists, we assume they have access to prevent redirect loops,
-    // or they will be stopped by RLS on the page anyway.
   }
 
   // Protect /student routes
@@ -96,19 +102,28 @@ export async function middleware(request: NextRequest) {
     if (!user) {
       return NextResponse.redirect(new URL('/login', request.url))
     }
-    const role = await getUserRole()
+    const { role, needsPasswordChange } = await getUserRoleAndStatus()
     if (role === 'admin') {
       return NextResponse.redirect(new URL('/admin/dashboard', request.url))
+    }
+    if (role !== 'student') {
+      return NextResponse.redirect(new URL('/login', request.url))
+    }
+    if (needsPasswordChange && pathname !== '/student/change-password') {
+      return NextResponse.redirect(new URL('/student/change-password', request.url))
     }
   }
 
   // If user is already logged in and hits /login or root, redirect to their dashboard
   if ((pathname === '/login' || pathname === '/') && user) {
-    const role = await getUserRole()
+    const { role, needsPasswordChange } = await getUserRoleAndStatus()
     if (role === 'admin') {
       return NextResponse.redirect(new URL('/admin/dashboard', request.url))
     }
     if (role === 'student') {
+      if (needsPasswordChange) {
+        return NextResponse.redirect(new URL('/student/change-password', request.url))
+      }
       return NextResponse.redirect(new URL('/student/dashboard', request.url))
     }
   }

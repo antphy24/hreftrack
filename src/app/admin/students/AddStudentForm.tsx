@@ -3,10 +3,13 @@
 import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import { createStudent } from './actions'
+import { Modal } from '@/components/Modal'
+import { AlertModal } from '@/components/AlertModal'
 
 export function AddStudentForm() {
   const [isOpen, setIsOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [alertMessage, setAlertMessage] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -20,9 +23,10 @@ export function AddStudentForm() {
       if (res?.error) {
         setError(res.error)
       } else {
+        setAlertMessage('Student created successfully! Their initial password is their NIS.')
         setIsOpen(false)
       }
-    } catch (err) {
+    } catch {
       setError('An unexpected error occurred.')
     } finally {
       setIsLoading(false)
@@ -39,17 +43,8 @@ export function AddStudentForm() {
         Add Student
       </button>
 
-      {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <h3 className="text-lg font-bold text-slate-800">Add New Student</h3>
-              <button onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-slate-600">
-                ✕
-              </button>
-            </div>
-            
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+      <Modal isOpen={isOpen} onClose={() => setIsOpen(false)} title="Add New Student">
+        <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
                 <div className="p-3 rounded-lg bg-red-50 text-red-600 text-sm font-medium border border-red-100">
                   {error}
@@ -57,55 +52,56 @@ export function AddStudentForm() {
               )}
               
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
-                <input 
-                  type="text" 
-                  name="fullName" 
-                  required 
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">NIS (Student ID)</label>
-                <input 
-                  type="text" 
-                  name="nis" 
-                  required 
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
-                />
-              </div>
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                Full Name
+              </label>
+              <input 
+                type="text" 
+                name="fullName" 
+                required 
+                placeholder="e.g. John Doe"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all dark:bg-slate-950 dark:border-slate-800 dark:text-slate-100 dark:placeholder-slate-500 shadow-sm"
+              />
+            </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
-                <input 
-                  type="password" 
-                  name="password" 
-                  required 
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
-                />
-              </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                NIS
+              </label>
+              <input 
+                type="text" 
+                name="nis" 
+                required 
+                placeholder="e.g. 2024001"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all dark:bg-slate-950 dark:border-slate-800 dark:text-slate-100 dark:placeholder-slate-500 shadow-sm"
+              />
+            </div>
 
-              <div className="pt-4 flex justify-end space-x-3">
+              <div className="pt-6 flex justify-end space-x-3 border-t border-slate-100 dark:border-slate-800/50 mt-6">
                 <button 
                   type="button" 
                   onClick={() => setIsOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                  className="px-6 py-3 text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 dark:text-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-slate-500"
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit" 
                   disabled={isLoading}
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
+                  className="px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-xl transition-all shadow-md disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                 >
                   {isLoading ? 'Creating...' : 'Create Student'}
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+        </form>
+      </Modal>
+
+      <AlertModal 
+        isOpen={!!alertMessage}
+        onClose={() => setAlertMessage(null)}
+        title="Success"
+        description={alertMessage}
+      />
     </>
   )
 }

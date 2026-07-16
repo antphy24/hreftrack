@@ -15,12 +15,16 @@ export async function submitMabbeppaLog(formData: FormData) {
   // Fetch the assignment to get area_id and student_id
   const { data: assignment } = await supabase
     .from('mabbeppa_assignments')
-    .select('area_id, student_id')
+    .select('area_id, student_id, reporter_id')
     .eq('id', assignment_id)
     .single()
 
   if (!assignment) {
     return { error: 'Assignment not found' }
+  }
+
+  if (assignment.reporter_id !== user.id) {
+    return { error: 'You are not assigned as the reporter for this area.' }
   }
 
   const { error } = await supabase.from('mabbeppa_logs').insert({

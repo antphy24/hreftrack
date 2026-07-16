@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { Users, ClipboardList, CheckSquare, MessageSquare } from 'lucide-react'
+import { LogoText } from '@/components/Logo'
 
 function StatsSkeleton() {
   return (
@@ -89,7 +90,7 @@ export default function AdminDashboard() {
       <DashboardStats />
       
       <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100">
-        <h2 className="text-lg font-bold text-slate-800 mb-4">Welcome to HreFTrack Admin</h2>
+        <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center">Welcome to <LogoText className="mx-2 text-lg font-bold tracking-wider" variant="light" /> Admin</h2>
         <p className="text-slate-600">
           Use the sidebar to navigate through the different management modules.
           Make sure to populate students before assigning them to Mabbeppa areas.

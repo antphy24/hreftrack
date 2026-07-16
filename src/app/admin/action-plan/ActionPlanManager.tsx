@@ -1,9 +1,14 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 'use client'
 
 import { useState, useRef } from 'react'
 import { downloadCSV } from '@/utils/csv'
 import { addCategory, deleteCategory, updateCategory, addItem, deleteItem, updateItem, toggleItemActive, bulkAddAdabItems } from './actions'
+import { parseCSV } from '@/utils/csv'
 import { Trash2, Download, Power, PowerOff, Upload, Edit2, X, Check } from 'lucide-react'
+import { Modal } from '@/components/Modal'
+import { AlertModal } from '@/components/AlertModal'
+import { DeleteFormButton } from '@/components/DeleteFormButton'
 
 export function ActionPlanManager({ categories, items, logs }: any) {
   const [activeTab, setActiveTab] = useState('categories')
@@ -15,6 +20,7 @@ export function ActionPlanManager({ categories, items, logs }: any) {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [importError, setImportError] = useState<string | null>(null)
+  const [alertMessage, setAlertMessage] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleExportLogs = () => {
@@ -49,29 +55,20 @@ export function ActionPlanManager({ categories, items, logs }: any) {
     const text = await file.text()
     
     try {
-      const rows = text.split('\n').map(row => row.trim()).filter(row => row)
-      const parsedRows = []
-      
-      let startIdx = 0
-      if (rows[0].toLowerCase().includes('category')) {
-        startIdx = 1
-      }
+      const lines = parseCSV(text)
+      if (lines.length < 2) throw new Error('File is empty or missing headers')
 
-      for (let i = startIdx; i < rows.length; i++) {
-        const parts = rows[i].split(',')
-        if (parts.length >= 2) {
-          parsedRows.push({
-            category: parts[0].trim(),
-            item: parts.slice(1).join(',').trim() // In case item description has commas, join rest
-          })
-        } else {
-          throw new Error(`Row ${i + 1} is missing required columns.`)
+      const parsedRows = lines.slice(1).map((parts, index) => {
+        if (parts.length < 2) throw new Error(`Row ${index + 2} is missing required columns.`)
+        return {
+          category: parts[0],
+          item: parts[1]
         }
-      }
+      })
 
       if (parsedRows.length > 0) {
         await bulkAddAdabItems(parsedRows)
-        alert('Bulk import completed!')
+        setAlertMessage('Bulk import completed!')
         setIsImportModalOpen(false)
       } else {
         setImportError('No valid data found in CSV.')
@@ -135,7 +132,7 @@ export function ActionPlanManager({ categories, items, logs }: any) {
                         <button onClick={() => setEditingCategory(c.id)} className="text-blue-500 hover:bg-blue-50 p-2 rounded"><Edit2 className="w-4 h-4" /></button>
                         <form action={deleteCategory}>
                           <input type="hidden" name="id" value={c.id} />
-                          <button type="submit" className="text-red-500 hover:bg-red-50 p-2 rounded"><Trash2 className="w-4 h-4" /></button>
+                          <DeleteFormButton title="Delete Category" description={`Are you sure you want to delete "${c.name}"? This action cannot be undone.`} />
                         </form>
                       </div>
                     </>
@@ -205,7 +202,7 @@ export function ActionPlanManager({ categories, items, logs }: any) {
                         </button>
                         <form action={deleteItem}>
                           <input type="hidden" name="id" value={i.id} />
-                          <button type="submit" className="text-red-500 hover:text-red-700 p-2 rounded hover:bg-red-50" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                          <DeleteFormButton title="Delete Item" description={`Are you sure you want to delete "${i.description}"?`} />
                         </form>
                       </td>
                     </tr>
@@ -254,15 +251,8 @@ export function ActionPlanManager({ categories, items, logs }: any) {
         )}
       </div>
 
-      {isImportModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <h3 className="text-lg font-bold text-slate-800">Import Categories & Items</h3>
-              <button onClick={() => setIsImportModalOpen(false)} className="text-slate-400 hover:text-slate-600">✕</button>
-            </div>
-            
-            <div className="p-6 space-y-4">
+      <Modal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} title="Import Categories & Items" maxWidth="max-w-lg">
+        <div className="space-y-4">
               <p className="text-sm text-slate-600">
                 Upload a CSV file containing Adab Categories and their Item Descriptions. The file must have exactly two columns: <strong>Category Name, Item Description</strong>.
               </p>
@@ -292,10 +282,15 @@ export function ActionPlanManager({ categories, items, logs }: any) {
                   Close
                 </button>
               </div>
-            </div>
-          </div>
         </div>
-      )}
+      </Modal>
+
+      <AlertModal 
+        isOpen={!!alertMessage}
+        onClose={() => setAlertMessage(null)}
+        title="Success"
+        description={alertMessage}
+      />
     </div>
   )
 }

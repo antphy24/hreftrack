@@ -31,5 +31,60 @@ export function downloadCSV(data: any[], filename: string) {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+    URL.revokeObjectURL(url)
   }
+}
+
+export function parseCSV(text: string): string[][] {
+  const result: string[][] = []
+  let currentLine: string[] = []
+  let currentCell = ''
+  let inQuotes = false
+
+  // Handle BOM
+  if (text.charCodeAt(0) === 0xFEFF) {
+    text = text.slice(1)
+  }
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i]
+    const nextChar = text[i + 1]
+
+    if (inQuotes) {
+      if (char === '"' && nextChar === '"') {
+        currentCell += '"'
+        i++ // skip next quote
+      } else if (char === '"') {
+        inQuotes = false
+      } else {
+        currentCell += char
+      }
+    } else {
+      if (char === '"') {
+        inQuotes = true
+      } else if (char === ',') {
+        currentLine.push(currentCell.trim())
+        currentCell = ''
+      } else if (char === '\n' || (char === '\r' && nextChar === '\n')) {
+        if (char === '\r') i++ // skip \n
+        currentLine.push(currentCell.trim())
+        if (currentLine.some(c => c !== '')) {
+          result.push(currentLine)
+        }
+        currentLine = []
+        currentCell = ''
+      } else {
+        currentCell += char
+      }
+    }
+  }
+
+  if (currentCell !== '' || currentLine.length > 0) {
+    currentLine.push(currentCell.trim())
+    if (currentLine.some(c => c !== '')) {
+      result.push(currentLine)
+    }
+  }
+
+  return result
 }

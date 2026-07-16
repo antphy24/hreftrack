@@ -1,10 +1,13 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { downloadCSV } from '@/utils/csv'
+import { downloadCSV, parseCSV } from '@/utils/csv'
 import { addArea, deleteArea, updateArea, addIndicator, deleteIndicator, updateIndicator, addAssignment, deleteAssignment, bulkAddMabbeppaAreas } from './actions'
 import { Trash2, Download, Upload, Search, X, Check, ChevronDown, Edit2 } from 'lucide-react'
-
+import { Modal } from '@/components/Modal'
+import { AlertModal } from '@/components/AlertModal'
+import { DeleteFormButton } from '@/components/DeleteFormButton'
 export function MabbeppaManager({ areas, indicators, assignments, logs, students }: any) {
   const [activeTab, setActiveTab] = useState('areas')
   const [editingArea, setEditingArea] = useState<string | null>(null)
@@ -14,6 +17,7 @@ export function MabbeppaManager({ areas, indicators, assignments, logs, students
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [importError, setImportError] = useState<string | null>(null)
+  const [alertMessage, setAlertMessage] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Assignments State
@@ -57,30 +61,23 @@ export function MabbeppaManager({ areas, indicators, assignments, logs, students
     const text = await file.text()
     
     try {
-      const rows = text.split('\n').map(row => row.trim()).filter(row => row)
-      const parsedRows = []
-      
-      let startIdx = 0
-      if (rows[0].toLowerCase().includes('area name') || rows[0].toLowerCase().includes('area')) {
-        startIdx = 1
-      }
+      const lines = parseCSV(text)
+      if (lines.length < 2) throw new Error('File is empty or missing headers')
 
-      for (let i = startIdx; i < rows.length; i++) {
-        const parts = rows[i].split(',')
-        if (parts.length >= 3) {
-          parsedRows.push({
-            areaName: parts[0].trim(),
-            cleanerNis: parts[1].split(';').map(n => n.trim()).filter(n => n),
-            reporterNis: parts[2].trim()
-          })
-        } else {
-          throw new Error(`Row ${i + 1} is missing required columns.`)
+      const parsedRows = lines.slice(1).map((parts, index) => {
+        if (parts.length < 3) throw new Error(`Row ${index + 2} is missing required columns.`)
+        
+        const cleaners = parts[1].split(';').map(n => n.trim()).filter(n => n)
+        return {
+          areaName: parts[0],
+          cleanerNis: cleaners,
+          reporterNis: parts[2]
         }
-      }
+      })
 
       if (parsedRows.length > 0) {
         await bulkAddMabbeppaAreas(parsedRows)
-        alert('Bulk import completed!')
+        setAlertMessage('Bulk import completed!')
         setIsImportModalOpen(false)
       } else {
         setImportError('No valid data found in CSV.')
@@ -151,7 +148,7 @@ export function MabbeppaManager({ areas, indicators, assignments, logs, students
                         <button onClick={() => setEditingArea(a.id)} className="text-blue-500 hover:bg-blue-50 p-2 rounded"><Edit2 className="w-4 h-4" /></button>
                         <form action={deleteArea}>
                           <input type="hidden" name="id" value={a.id} />
-                          <button type="submit" className="text-red-500 hover:bg-red-50 p-2 rounded"><Trash2 className="w-4 h-4" /></button>
+                          <DeleteFormButton title="Delete Area" description={`Are you sure you want to delete "${a.name}"? This action cannot be undone.`} />
                         </form>
                       </div>
                     </>
@@ -185,7 +182,7 @@ export function MabbeppaManager({ areas, indicators, assignments, logs, students
                         <button onClick={() => setEditingIndicator(i.id)} className="text-blue-500 hover:bg-blue-50 p-2 rounded"><Edit2 className="w-4 h-4" /></button>
                         <form action={deleteIndicator}>
                           <input type="hidden" name="id" value={i.id} />
-                          <button type="submit" className="text-red-500 hover:bg-red-50 p-2 rounded"><Trash2 className="w-4 h-4" /></button>
+                          <DeleteFormButton title="Delete Indicator" description={`Are you sure you want to delete "${i.label}"?`} />
                         </form>
                       </div>
                     </>
@@ -200,7 +197,7 @@ export function MabbeppaManager({ areas, indicators, assignments, logs, students
           <div className="space-y-6">
             <form action={(formData) => {
               if (!selectedArea || selectedCleaners.length === 0 || !selectedReporter) {
-                 alert("Please fill all required fields")
+                 setAlertMessage("Please fill all required fields")
                  return
               }
               // Ensure all selected cleaners are included in formData
@@ -266,7 +263,7 @@ export function MabbeppaManager({ areas, indicators, assignments, logs, students
                       <td className="px-4 py-3 text-right">
                         <form action={deleteAssignment}>
                           <input type="hidden" name="id" value={a.id} />
-                          <button type="submit" className="text-red-500 hover:text-red-700"><Trash2 className="w-4 h-4" /></button>
+                          <DeleteFormButton title="Delete Assignment" description="Are you sure you want to remove this assignment?" />
                         </form>
                       </td>
                     </tr>
@@ -317,15 +314,8 @@ export function MabbeppaManager({ areas, indicators, assignments, logs, students
         )}
       </div>
 
-      {isImportModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <h3 className="text-lg font-bold text-slate-800">Import Areas & Assignments</h3>
-              <button onClick={() => setIsImportModalOpen(false)} className="text-slate-400 hover:text-slate-600">✕</button>
-            </div>
-            
-            <div className="p-6 space-y-4">
+      <Modal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} title="Import Areas & Assignments" maxWidth="max-w-lg">
+        <div className="space-y-4">
               <p className="text-sm text-slate-600">
                 Upload a CSV file containing Mabbeppa Areas and their assigned students. The file must have exactly three columns: <strong>Area Name, Cleaner NIS, Reporter NIS</strong>.
                 <br/><br/>
@@ -357,10 +347,15 @@ export function MabbeppaManager({ areas, indicators, assignments, logs, students
                   Close
                 </button>
               </div>
-            </div>
-          </div>
         </div>
-      )}
+      </Modal>
+
+      <AlertModal 
+        isOpen={!!alertMessage}
+        onClose={() => setAlertMessage(null)}
+        title="Alert"
+        description={alertMessage}
+      />
     </div>
   )
 }

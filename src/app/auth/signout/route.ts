@@ -15,7 +15,15 @@ export async function POST(req: NextRequest) {
   }
 
   revalidatePath('/', 'layout')
-  return NextResponse.redirect(new URL('/login', req.url), {
+
+  const response = NextResponse.redirect(new URL('/login', req.url), {
     status: 302,
   })
+
+  // SECURITY FIX: Clear custom auth cookies on sign-out to prevent
+  // stale role data from being inherited by the next user who logs in.
+  response.cookies.delete('user-role')
+  response.cookies.delete('needs-password-change')
+
+  return response
 }

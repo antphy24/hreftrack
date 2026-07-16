@@ -7,6 +7,7 @@ create table public.profiles (
   role text check (role in ('admin', 'student')) not null default 'student',
   full_name text not null,
   nis text unique, -- Null for admin, required for student
+  needs_password_change boolean not null default true,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 

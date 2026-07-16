@@ -1,6 +1,8 @@
 import { ReactNode } from 'react'
 import Link from 'next/link'
-import { LayoutDashboard, CheckSquare, MessageSquare, ClipboardList, LogOut } from 'lucide-react'
+import { LayoutDashboard, CheckSquare, MessageSquare, ClipboardList } from 'lucide-react'
+import { SignOutButton } from '@/components/SignOutButton'
+import { Logo } from '@/components/Logo'
 
 export default function StudentLayout({ children }: { children: ReactNode }) {
   return (
@@ -8,7 +10,7 @@ export default function StudentLayout({ children }: { children: ReactNode }) {
       {/* Sidebar */}
       <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col shadow-2xl">
         <div className="h-16 flex items-center px-6 border-b border-slate-800">
-          <span className="text-white text-lg font-bold tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">HreFTrack</span>
+          <Logo />
         </div>
         
         <nav className="flex-1 py-6 px-4 space-y-2 overflow-y-auto">
@@ -34,12 +36,7 @@ export default function StudentLayout({ children }: { children: ReactNode }) {
         </nav>
 
         <div className="p-4 border-t border-slate-800">
-          <form action="/auth/signout" method="post">
-            <button type="submit" className="flex items-center w-full px-4 py-3 text-sm font-medium rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white transition-all group">
-              <LogOut className="w-5 h-5 mr-3 group-hover:-translate-x-1 transition-transform" />
-              Sign Out
-            </button>
-          </form>
+          <SignOutButton />
         </div>
       </aside>
 

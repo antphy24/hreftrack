@@ -45,7 +45,8 @@ export function PeerReportForm({ students }: any) {
     setError(null)
     setSuccess(false)
     
-    const formData = new FormData(e.currentTarget)
+    const form = e.currentTarget
+    const formData = new FormData(form)
     
     try {
       const res = await submitPeerReport(formData)
@@ -55,10 +56,10 @@ export function PeerReportForm({ students }: any) {
         setSuccess(true)
         setSelectedStudentId('')
         setSearchTerm('')
-        e.currentTarget.reset()
+        form.reset()
       }
-    } catch (err) {
-      setError('An unexpected error occurred.')
+    } catch (err: any) {
+      setError(`An unexpected client error occurred: ${err.message || 'Unknown error'}`)
     } finally {
       setIsLoading(false)
     }
