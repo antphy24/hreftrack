@@ -7,17 +7,24 @@ import { AddStudentForm } from './AddStudentForm'
 import { BulkAddStudentsForm } from './BulkAddStudentsForm'
 import { ResetPasswordForm } from './ResetPasswordForm'
 import { DeleteFormButton } from '@/components/DeleteFormButton'
+import { SearchStudents } from './SearchStudents'
 
-async function StudentsList({ currentPage }: { currentPage: number }) {
+async function StudentsList({ currentPage, query }: { currentPage: number, query: string }) {
   const supabase = createClient()
   const ITEMS_PER_PAGE = 10
   const from = (currentPage - 1) * ITEMS_PER_PAGE
   const to = from + ITEMS_PER_PAGE - 1
   
-  const { data: students, count } = await supabase
+  let dbQuery = supabase
     .from('profiles')
     .select('*', { count: 'exact' })
     .eq('role', 'student')
+    
+  if (query) {
+    dbQuery = dbQuery.or(`full_name.ilike.%${query}%,nis.ilike.%${query}%`)
+  }
+
+  const { data: students, count } = await dbQuery
     .order('created_at', { ascending: false })
     .range(from, to)
     
@@ -60,7 +67,7 @@ async function StudentsList({ currentPage }: { currentPage: number }) {
           {(!students || students.length === 0) && (
             <tr>
               <td colSpan={5} className="px-6 py-8 text-center text-sm text-slate-500">
-                No students found. Add one to get started.
+                {query ? 'No students found matching your search.' : 'No students found. Add one to get started.'}
               </td>
             </tr>
           )}
@@ -73,12 +80,12 @@ async function StudentsList({ currentPage }: { currentPage: number }) {
           </div>
           <div className="flex space-x-2">
             {currentPage > 1 ? (
-              <Link href={`/admin/students?page=${currentPage - 1}`} className="px-3 py-1 bg-white border border-slate-300 rounded text-sm text-slate-600 hover:bg-slate-50">Previous</Link>
+              <Link href={`/admin/students?page=${currentPage - 1}${query ? `&query=${encodeURIComponent(query)}` : ''}`} className="px-3 py-1 bg-white border border-slate-300 rounded text-sm text-slate-600 hover:bg-slate-50">Previous</Link>
             ) : (
               <button disabled className="px-3 py-1 bg-slate-100 border border-slate-200 rounded text-sm text-slate-400 cursor-not-allowed">Previous</button>
             )}
             {currentPage < totalPages ? (
-              <Link href={`/admin/students?page=${currentPage + 1}`} className="px-3 py-1 bg-white border border-slate-300 rounded text-sm text-slate-600 hover:bg-slate-50">Next</Link>
+              <Link href={`/admin/students?page=${currentPage + 1}${query ? `&query=${encodeURIComponent(query)}` : ''}`} className="px-3 py-1 bg-white border border-slate-300 rounded text-sm text-slate-600 hover:bg-slate-50">Next</Link>
             ) : (
               <button disabled className="px-3 py-1 bg-slate-100 border border-slate-200 rounded text-sm text-slate-400 cursor-not-allowed">Next</button>
             )}
@@ -108,8 +115,9 @@ function StudentsSkeleton() {
   )
 }
 
-export default function StudentsPage({ searchParams }: { searchParams: { page?: string } }) {
+export default function StudentsPage({ searchParams }: { searchParams: { page?: string, query?: string } }) {
   const currentPage = parseInt(searchParams.page || '1')
+  const query = searchParams.query || ''
 
   return (
     <div className="space-y-6">
@@ -132,8 +140,12 @@ export default function StudentsPage({ searchParams }: { searchParams: { page?: 
         </div>
       </div>
 
-      <Suspense fallback={<StudentsSkeleton />} key={currentPage}>
-        <StudentsList currentPage={currentPage} />
+      <div className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+        <SearchStudents />
+      </div>
+
+      <Suspense fallback={<StudentsSkeleton />} key={`${currentPage}-${query}`}>
+        <StudentsList currentPage={currentPage} query={query} />
       </Suspense>
     </div>
   )
