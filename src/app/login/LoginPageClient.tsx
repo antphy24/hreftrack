@@ -220,7 +220,7 @@ function SearchableStudentSelect({ options }: { options: any[] }) {
   }, [])
 
   const filteredOptions = options.filter(o => 
-    o.full_name.toLowerCase().includes(search.toLowerCase())
+    (o?.full_name || '').toLowerCase().includes(search.toLowerCase())
   )
   const selectedOption = options.find(o => o.nis === selectedNis)
 
@@ -235,7 +235,7 @@ function SearchableStudentSelect({ options }: { options: any[] }) {
           <User className="h-5 w-5 text-slate-500 group-focus-within:text-blue-400 transition-colors" />
         </div>
         <span className={`text-base truncate ${selectedOption ? 'text-slate-200' : 'text-slate-500'}`}>
-          {selectedOption ? selectedOption.full_name : 'Search your name...'}
+          {selectedOption ? (selectedOption.full_name || 'Unnamed Student') : 'Search your name...'}
         </span>
         <ChevronDown className="w-5 h-5 text-slate-500" />
       </div>
@@ -268,7 +268,7 @@ function SearchableStudentSelect({ options }: { options: any[] }) {
                   }}
                 >
                   <div className="flex flex-col">
-                    <span>{o.full_name}</span>
+                    <span>{o?.full_name || 'Unnamed Student'}</span>
                   </div>
                   {selectedNis === o.nis && <Check className="w-5 h-5 text-blue-400" />}
                 </div>

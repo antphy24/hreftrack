@@ -77,6 +77,7 @@ export async function createStudent(formData: FormData) {
   }
 
   revalidatePath('/admin/students')
+  revalidatePath('/login')
   return { password } // Return the generated password to the client
 }
 
@@ -103,6 +104,7 @@ export async function deleteStudent(formData: FormData) {
   }
 
   revalidatePath('/admin/students')
+  revalidatePath('/login')
 }
 
 export async function updateStudentPassword(formData: FormData) {
@@ -191,5 +193,49 @@ export async function bulkCreateStudents(students: { fullName: string, nis: stri
   }
 
   revalidatePath('/admin/students')
+  revalidatePath('/login')
   return { successCount, errors }
+}
+
+export async function deleteAllStudents() {
+  const { error: authError, supabase } = await requireAdmin()
+  if (authError) throw new Error(authError)
+
+  const adminSupabase = createAdminClient()
+
+  // Fetch all students
+  const { data: students, error: fetchError } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('role', 'student')
+
+  if (fetchError) {
+    throw new Error(`Failed to fetch students: ${fetchError.message}`)
+  }
+
+  if (students && students.length > 0) {
+    // Delete auth users in parallel chunks to prevent timeouts
+    const chunkSize = 50
+    for (let i = 0; i < students.length; i += chunkSize) {
+      const chunk = students.slice(i, i + chunkSize)
+      await Promise.all(
+        chunk.map(async (student) => {
+          const { error: authDeleteError } = await adminSupabase.auth.admin.deleteUser(student.id)
+          if (authDeleteError) {
+            console.error(`Failed to delete auth user ${student.id}: ${authDeleteError.message}`)
+          }
+        })
+      )
+    }
+  }
+
+  // Delete all student profiles
+  const { error } = await supabase.from('profiles').delete().eq('role', 'student')
+  
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  revalidatePath('/admin/students')
+  revalidatePath('/login')
 }

@@ -2,7 +2,7 @@ import { Suspense } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/utils/supabase/server'
 import { Plus, Trash2 } from 'lucide-react'
-import { deleteStudent } from './actions'
+import { deleteStudent, deleteAllStudents } from './actions'
 import { AddStudentForm } from './AddStudentForm'
 import { BulkAddStudentsForm } from './BulkAddStudentsForm'
 import { ResetPasswordForm } from './ResetPasswordForm'
@@ -119,6 +119,14 @@ export default function StudentsPage({ searchParams }: { searchParams: { page?: 
           <p className="text-sm text-slate-500 mt-1">Add, view, or remove student accounts.</p>
         </div>
         <div className="flex items-center space-x-3">
+          <form action={deleteAllStudents}>
+            <DeleteFormButton 
+              title="Delete All Students" 
+              description="Are you sure you want to delete all students? This action cannot be undone and will permanently remove all student accounts."
+              className="flex items-center space-x-2 bg-red-50 hover:bg-red-100 text-red-600 px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-red-200"
+              icon={<><Trash2 className="w-4 h-4" /><span>Delete All</span></>}
+            />
+          </form>
           <BulkAddStudentsForm />
           <AddStudentForm />
         </div>

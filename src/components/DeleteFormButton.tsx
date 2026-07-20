@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import { ConfirmModal } from './ConfirmModal'
+import { useFormStatus } from 'react-dom'
 
 interface DeleteFormButtonProps {
   title?: string
@@ -18,20 +19,27 @@ export function DeleteFormButton({
   icon = <Trash2 className="w-4 h-4" />
 }: DeleteFormButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
+  const { pending } = useFormStatus()
   const id = React.useId()
-  const btnId = `hidden-submit-${id}`
+  // Sanitize the ID to be a valid HTML ID without colons by replacing them
+  const safeId = id.replace(/:/g, '')
+  const btnId = `hidden-submit-${safeId}`
+
+  // Close modal when pending finishes (either success or error)
+  React.useEffect(() => {
+    if (!pending && isOpen) {
+      // Small delay to ensure any success messages or state updates can render first
+      const t = setTimeout(() => setIsOpen(false), 100)
+      return () => clearTimeout(t)
+    }
+  }, [pending])
 
   const handleConfirm = () => {
-    setIsDeleting(true)
     // Find the closest form and submit it
-    // We delay slightly to allow UI to update (though not strictly necessary)
-    setTimeout(() => {
-      const btn = document.getElementById(btnId) as HTMLButtonElement
-      if (btn) {
-        btn.click()
-      }
-    }, 10)
+    const btn = document.getElementById(btnId) as HTMLButtonElement
+    if (btn) {
+      btn.click()
+    }
   }
 
   return (
@@ -41,6 +49,7 @@ export function DeleteFormButton({
         onClick={() => setIsOpen(true)} 
         title={title} 
         className={className}
+        disabled={pending}
       >
         {icon}
       </button>
@@ -56,7 +65,7 @@ export function DeleteFormButton({
         description={description}
         confirmText="Delete"
         isDestructive={true}
-        isLoading={isDeleting}
+        isLoading={pending}
       />
     </>
   )
